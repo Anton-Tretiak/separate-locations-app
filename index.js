@@ -111,86 +111,91 @@ const fetchProducts = async (cursor = null) => {
   return response.data.data.products;
 };
 
-app.get('/update-inventory-metafields', async (req, res) => {
-  try {
-    let hasNextPage = true;
-    let endCursor = null;
+app.get('/update-inventory-metafields', (req, res) => {
+  // Send the immediate response back to the cron job or client
+  res.send('Metafields updating process started...');
 
-    while (hasNextPage) {
-      const { edges, pageInfo } = await fetchProducts(endCursor);
+  // Continue the long-running process asynchronously after sending response
+  setImmediate(async () => {
+    try {
+      let hasNextPage = true;
+      let endCursor = null;
 
-      for (const product of edges) {
-        const productId = product.node.id;
-        let warehouseQuantity = 0;
-        let vendorQuantity = 0;
+      while (hasNextPage) {
+        const { edges, pageInfo } = await fetchProducts(endCursor);
 
-        for (const variant of product.node.variants.edges) {
-          const inventoryLevels = variant.node.inventoryItem.inventoryLevels.edges;
+        for (const product of edges) {
+          const productId = product.node.id;
+          let warehouseQuantity = 0;
+          let vendorQuantity = 0;
 
-          for (const inventory of inventoryLevels) {
-            const locationName = inventory.node.location.name;
-            const quantity = inventory.node.available;
+          for (const variant of product.node.variants.edges) {
+            const inventoryLevels = variant.node.inventoryItem.inventoryLevels.edges;
 
-            if (locationName === warehouseLocationName) {
-              warehouseQuantity += quantity;
-            } else if (locationName === vendorLocationName) {
-              vendorQuantity += quantity;
+            for (const inventory of inventoryLevels) {
+              const locationName = inventory.node.location.name;
+              const quantity = inventory.node.available;
+
+              if (locationName === warehouseLocationName) {
+                warehouseQuantity += quantity;
+              } else if (locationName === vendorLocationName) {
+                vendorQuantity += quantity;
+              }
             }
           }
-        }
 
-        const metafieldsQuery = fetchMetafieldsQuery(productId);
-        const metafieldsResponse = await axios({
-          method: 'post',
-          url: GRAPHQL_URL,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Access-Token': ACCESS_TOKEN,
-          },
-          data: { query: metafieldsQuery },
-        });
-
-        const existingMetafields = metafieldsResponse.data.data.product.metafields.edges;
-        let currentWarehouseQuantity = 0;
-        let currentVendorQuantity = 0;
-
-        for (const metafield of existingMetafields) {
-          if (metafield.node.key === warehouseMetafieldKey) {
-            currentWarehouseQuantity = parseInt(metafield.node.value, 10);
-          } else if (metafield.node.key === vendorMetafieldKey) {
-            currentVendorQuantity = parseInt(metafield.node.value, 10);
-          }
-        }
-
-        if (warehouseQuantity !== currentWarehouseQuantity || vendorQuantity !== currentVendorQuantity) {
-          // Update the metafields with the quantities if they differ
-          const mutation = updateMetafieldMutation(productId, warehouseQuantity, vendorQuantity);
-
-          const metafieldResponse = await axios({
+          const metafieldsQuery = fetchMetafieldsQuery(productId);
+          const metafieldsResponse = await axios({
             method: 'post',
             url: GRAPHQL_URL,
             headers: {
               'Content-Type': 'application/json',
               'X-Shopify-Access-Token': ACCESS_TOKEN,
             },
-            data: { query: mutation },
+            data: { query: metafieldsQuery },
           });
 
-          console.log(`Updated product: ${product.node.title} with Warehouse: ${warehouseQuantity}, Vendor: ${vendorQuantity}`);
-        } else {
-          console.log(`Skipped update for product: ${product.node.title} (no change in quantity)`);
+          const existingMetafields = metafieldsResponse.data.data.product.metafields.edges;
+          let currentWarehouseQuantity = 0;
+          let currentVendorQuantity = 0;
+
+          for (const metafield of existingMetafields) {
+            if (metafield.node.key === warehouseMetafieldKey) {
+              currentWarehouseQuantity = parseInt(metafield.node.value, 10);
+            } else if (metafield.node.key === vendorMetafieldKey) {
+              currentVendorQuantity = parseInt(metafield.node.value, 10);
+            }
+          }
+
+          if (warehouseQuantity !== currentWarehouseQuantity || vendorQuantity !== currentVendorQuantity) {
+            // Update the metafields with the quantities if they differ
+            const mutation = updateMetafieldMutation(productId, warehouseQuantity, vendorQuantity);
+
+            const metafieldResponse = await axios({
+              method: 'post',
+              url: GRAPHQL_URL,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': ACCESS_TOKEN,
+              },
+              data: { query: mutation },
+            });
+
+            console.log(`Updated product: ${product.node.title} with Warehouse: ${warehouseQuantity}, Vendor: ${vendorQuantity}`);
+          } else {
+            console.log(`Skipped update for product: ${product.node.title} (no change in quantity)`);
+          }
         }
+
+        hasNextPage = pageInfo.hasNextPage;
+        endCursor = pageInfo.endCursor;
       }
 
-      hasNextPage = pageInfo.hasNextPage;
-      endCursor = pageInfo.endCursor;
+      console.log('Metafields updated with inventory quantities.');
+    } catch (error) {
+      console.error(error.response ? error.response.data : error.message);
     }
-
-    res.send('Metafields updated with inventory quantities.');
-  } catch (error) {
-    console.error(error.response ? error.response.data : error.message);
-    res.status(500).json({ error: error.response ? error.response.data : error.message });
-  }
+  });
 });
 
 app.listen(PORT, (err) => {
