@@ -197,6 +197,6 @@ app.listen(PORT, (err) => {
   if (err) {
     console.error('Failed to start server:', err);
   } else {
-    console.log('Server is running on port 3340, http://localhost:3340/update-inventory-metafields');
+    console.log(`Server is running on port ${PORT}`);
   }
 });
