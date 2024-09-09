@@ -10,10 +10,10 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 const GRAPHQL_URL = `https://${SHOP}/admin/api/2023-07/graphql.json`;
 const PORT = process.env.PORT || 3340;
 
-const warehouseLocationName = "My Custom Location";
-const vendorLocationName = "Shop location";
-const warehouseMetafieldKey = "warehouse_location";
-const vendorMetafieldKey = "vendor_location";
+const warehouseLocationName = "Omaha Pneumatic Equipment Company";
+const vendorLocationName = "Vendor";
+const warehouseMetafieldKey = "omaha_product_inventory";
+const vendorMetafieldKey = "vendor_product_inventory";
 
 const updateMetafieldMutation = (productId, warehouseQuantity, vendorQuantity) => `
   mutation {
