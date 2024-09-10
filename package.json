@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "@shopify/shopify-api": "^11.4.0",
     "axios": "^1.7.7",
