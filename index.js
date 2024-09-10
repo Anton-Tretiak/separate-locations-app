@@ -111,11 +111,11 @@ const fetchProducts = async (cursor = null) => {
   return response.data.data.products;
 };
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 app.get('/update-inventory-metafields', (req, res) => {
-  // Send the immediate response back to the cron job or client
   res.send('Metafields updating process started...');
 
-  // Continue the long-running process asynchronously after sending response
   setImmediate(async () => {
     try {
       let hasNextPage = true;
@@ -185,6 +185,9 @@ app.get('/update-inventory-metafields', (req, res) => {
           } else {
             console.log(`Skipped update for product: ${product.node.title} (no change in quantity)`);
           }
+
+          // Add delay between each product's API call to avoid Shopify rate limit
+          await delay(500); // 500ms delay between each product mutation/fetch
         }
 
         hasNextPage = pageInfo.hasNextPage;
