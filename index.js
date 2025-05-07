@@ -80,7 +80,9 @@ const fetchProducts = async (cursor = null) => {
                             id
                             name
                           }
-                          available
+                          quantities (names: ["available"]) {
+                            quantity
+                          }
                         }
                       }
                     }
@@ -108,6 +110,8 @@ const fetchProducts = async (cursor = null) => {
     data: { query },
   });
 
+  console.log(JSON.stringify(response.data, null, 2));
+
   return response.data.data.products;
 };
 
@@ -134,7 +138,8 @@ app.get('/update-inventory-metafields', (req, res) => {
 
             for (const inventory of inventoryLevels) {
               const locationName = inventory.node.location.name;
-              const quantity = inventory.node.available;
+              // const quantity = inventory.node.quantities.quantity;
+              const quantity = inventory.node.quantities?.[0]?.quantity ?? 0;
 
               if (locationName === warehouseLocationName) {
                 warehouseQuantity += quantity;
