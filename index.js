@@ -110,7 +110,7 @@ const fetchProducts = async (cursor = null) => {
     data: { query },
   });
 
-  console.log(JSON.stringify(response.data, null, 2));
+  // console.log(JSON.stringify(response.data, null, 2));
 
   return response.data.data.products;
 };
