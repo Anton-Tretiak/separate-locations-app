@@ -112,7 +112,21 @@ const fetchProducts = async (cursor = null) => {
 
   // console.log(JSON.stringify(response.data, null, 2));
 
-  return response.data.data.products;
+  const graphResponse = response.data;
+
+  if (!graphResponse) {
+    throw new Error('Shopify response missing body');
+  }
+
+  if (graphResponse.errors && graphResponse.errors.length) {
+    throw new Error(`Shopify GraphQL errors: ${JSON.stringify(graphResponse.errors)}`);
+  }
+
+  if (!graphResponse.data || !graphResponse.data.products) {
+    throw new Error(`Unexpected Shopify response shape (products not found). Full response: ${JSON.stringify(graphResponse)}`);
+  }
+
+  return graphResponse.data.products;
 };
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
